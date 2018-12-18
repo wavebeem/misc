@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import * as React from "react";
 import {
   render,
   Window,
@@ -8,15 +8,16 @@ import {
   Text,
   TextInput,
   Tab,
+  Form,
   Checkbox
 } from "proton-native";
 
-class Example extends Component {
+class Example extends React.Component {
   render() {
     return (
       <App>
         <Window
-          title="Proton Native Rocks!"
+          title="cool nice app"
           margined
           size={{ w: 300, h: 300 }}
           menuBar={false}
@@ -31,6 +32,12 @@ class Example extends Component {
               <TextInput />
               <Checkbox>Whatup</Checkbox>
             </Box>
+            <Form padded>
+              <TextInput label="name" />
+              <TextInput label="username" />
+              <TextInput secure label="password" />
+              <TextInput multiline label="bio" />
+            </Form>
             <Tab>
               <Box label="First"><Text>First</Text></Box>
               <Box label="Second"><Text>Second</Text></Box>

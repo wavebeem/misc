@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "jsx": "react",
+    "outDir": "bin",
+    "target": "es5"
+  },
+  "include": ["src/**/*"]
+}
