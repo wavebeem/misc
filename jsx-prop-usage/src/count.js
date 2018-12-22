@@ -25,33 +25,53 @@ function getPropName(node) {
   }
 }
 
-function getUsage({ component, files, directory }) {
-  const filenames = glob.sync(files, {
-    cwd: directory,
-    absolute: true
-  });
-  const usage = new Map();
-  for (const f of filenames) {
-    const ast = parse(fs.readFileSync(f, "utf-8"), {
+function safeParse(filename) {
+  try {
+    return parse(fs.readFileSync(filename, "utf-8"), {
       sourceType: "unambiguous",
       plugins: ["jsx", "typescript", "classProperties", "objectRestSpread"]
     });
-    traverse(ast, {
-      enter(path) {
-        if (path.type === "JSXOpeningElement") {
-          if (getDottedName(path.node.name) === component) {
-            if (path.parent.children.length > 0) {
-              usage.set("children", 1);
-            }
-            for (const prop of path.node.attributes) {
-              const propName = getPropName(prop);
-              const value = usage.get(propName) || 0;
-              usage.set(propName, value + 1);
-            }
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+function updateUsageFromFile({ usage, filename, component }) {
+  const ast = safeParse(filename);
+  if (!ast) {
+    console.error(`failed to parse ${filename}`);
+    return;
+  }
+  traverse(ast, {
+    enter(path) {
+      if (path.type === "JSXOpeningElement") {
+        if (getDottedName(path.node.name) === component) {
+          if (path.parent.children.length > 0) {
+            usage.set("children", 1);
+          }
+          for (const prop of path.node.attributes) {
+            const propName = getPropName(prop);
+            const value = usage.get(propName) || 0;
+            usage.set(propName, value + 1);
           }
         }
       }
-    });
+    }
+  });
+}
+
+function getUsage(component, options) {
+  const filenames = glob.sync(options.files, {
+    cwd: options.directory,
+    absolute: true,
+    nodir: true
+  });
+  const usage = new Map();
+  for (const filename of filenames) {
+    updateUsageFromFile({ usage, filename, component });
   }
   return [...usage].map(pair => ({
     name: pair[0],
@@ -60,8 +80,7 @@ function getUsage({ component, files, directory }) {
 }
 
 function count(component, options) {
-  const { files, directory } = options;
-  const usage = getUsage({ component, files, directory });
+  const usage = getUsage(component, options);
   if (usage.length > 0) {
     usage.sort((a, b) => {
       if (b.count < a.count) {

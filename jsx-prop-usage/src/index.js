@@ -15,7 +15,11 @@ program
     "directory to use as the base for finding files"
   )
   .option(
-    "--files <files>",
+    "--ignore <pattern>",
+    "glob pattern used to ignore files; can be specified more than once"
+  )
+  .option(
+    "--files <pattern>",
     "glob pattern used to find input files",
     "**/*.{js,jsx,tsx}"
   )
