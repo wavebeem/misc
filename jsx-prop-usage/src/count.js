@@ -1,4 +1,5 @@
 const fs = require("fs");
+// TODO: https://github.com/sindresorhus/globby
 const glob = require("glob");
 const { parse } = require("@babel/parser");
 const traverse = require("@babel/traverse").default;
