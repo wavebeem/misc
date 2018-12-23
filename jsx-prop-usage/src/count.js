@@ -31,7 +31,12 @@ function safeParse(filename) {
   try {
     return parse(fs.readFileSync(filename, "utf-8"), {
       sourceType: "unambiguous",
-      plugins: ["jsx", "typescript", "classProperties", "objectRestSpread"]
+      plugins: [
+        filename.endsWith(".tsx") ? "typescript" : "flow",
+        "jsx",
+        "classProperties",
+        "objectRestSpread"
+      ]
     });
   } catch (error) {
     if (error instanceof SyntaxError) {
