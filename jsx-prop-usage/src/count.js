@@ -1,5 +1,5 @@
 const fs = require("fs");
-// TODO: https://github.com/sindresorhus/globby
+// TODO: https://www.npmjs.com/package/ignore-walk
 const glob = require("glob");
 const { parse } = require("@babel/parser");
 const traverse = require("@babel/traverse").default;
