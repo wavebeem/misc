@@ -61,13 +61,14 @@ function updateUsageFromFile({ usage, filename, component }) {
         path.type === "JSXOpeningElement" &&
         getDottedName(path.node.name) === component
       ) {
+        usage.componentCount++;
         if (path.parent.children.length > 0) {
-          usage.set("children", 1);
+          usage.propCounts.set("children", 1);
         }
         for (const prop of path.node.attributes) {
           const propName = getPropName(prop);
-          const value = usage.get(propName) || 0;
-          usage.set(propName, value + 1);
+          const value = usage.propCounts.get(propName) || 0;
+          usage.propCounts.set(propName, value + 1);
         }
       }
     }
@@ -81,20 +82,24 @@ function getUsage(component, options) {
     absolute: true,
     onlyFiles: true
   });
-  const usage = new Map();
+  const usage = {
+    componentCount: 0,
+    propCounts: new Map()
+  };
   for (const filename of filenames) {
     updateUsageFromFile({ usage, filename, component });
   }
-  return [...usage].map(pair => ({
+  usage.propCounts = [...usage.propCounts].map(pair => ({
     name: pair[0],
     count: pair[1]
   }));
+  return usage;
 }
 
 function count(component, options) {
-  const usage = getUsage(component, options);
-  if (usage.length > 0) {
-    usage.sort((a, b) => {
+  const { componentCount, propCounts } = getUsage(component, options);
+  if (propCounts.length > 0) {
+    propCounts.sort((a, b) => {
       if (b.count < a.count) {
         return -1;
       }
@@ -109,8 +114,10 @@ function count(component, options) {
       }
       return 0;
     });
-    const maxLen = usage[0].count.toString().length;
-    for (const { name, count } of usage) {
+    console.log(`<${component}> was used ${componentCount} time(s)`);
+    console.log();
+    const maxLen = propCounts[0].count.toString().length;
+    for (const { name, count } of propCounts) {
       console.log(count.toString().padStart(maxLen), name);
     }
   }
