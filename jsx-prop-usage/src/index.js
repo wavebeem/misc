@@ -8,14 +8,10 @@ program.version(pkg.version, "-v, --version");
 program
   .command("count <component>")
   .description("counts the number of occurrences of each prop for a component")
+  .option("--no-gitignore", "disable reading .gitignore files")
   .option(
     "--directory <directory>",
-    "directory to use as the base for finding files"
-  )
-  // TODO: Rename these two options to include/exclude, maybe?
-  .option(
-    "--ignore <pattern>",
-    "glob pattern used to ignore files; can be specified more than once"
+    "directory to use as the base for finding files instead of cwd"
   )
   .option(
     "--files <pattern>",
@@ -26,12 +22,16 @@ program
 
 // No arguments
 if (process.argv.length === 2) {
-  program.help();
+  console.error("Error: no command given");
+  console.error();
+  program.outputHelp();
+  process.exit(1);
 }
 
 // Unknown command
 program.on("command:*", () => {
-  console.error("Invalid command: %s", program.args.join(" ") + "\n");
+  console.error("Invalid command: %s", program.args.join(" "));
+  console.error();
   program.outputHelp();
   process.exit(1);
 });

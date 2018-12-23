@@ -1,8 +1,9 @@
 const fs = require("fs");
-// TODO: https://www.npmjs.com/package/ignore-walk
-const glob = require("glob");
+const globby = require("globby");
 const { parse } = require("@babel/parser");
 const traverse = require("@babel/traverse").default;
+
+const SPREAD_ATTRIBUTE_NAME = "{...}";
 
 function getDottedName(node) {
   switch (node.type) {
@@ -20,7 +21,7 @@ function getPropName(node) {
     case "JSXAttribute":
       return node.name.name;
     case "JSXSpreadAttribute":
-      return "{...}";
+      return SPREAD_ATTRIBUTE_NAME;
     default:
       throw new Error(`unexpected node type: ${node.type}`);
   }
@@ -48,16 +49,17 @@ function updateUsageFromFile({ usage, filename, component }) {
   }
   traverse(ast, {
     enter(path) {
-      if (path.type === "JSXOpeningElement") {
-        if (getDottedName(path.node.name) === component) {
-          if (path.parent.children.length > 0) {
-            usage.set("children", 1);
-          }
-          for (const prop of path.node.attributes) {
-            const propName = getPropName(prop);
-            const value = usage.get(propName) || 0;
-            usage.set(propName, value + 1);
-          }
+      if (
+        path.type === "JSXOpeningElement" &&
+        getDottedName(path.node.name) === component
+      ) {
+        if (path.parent.children.length > 0) {
+          usage.set("children", 1);
+        }
+        for (const prop of path.node.attributes) {
+          const propName = getPropName(prop);
+          const value = usage.get(propName) || 0;
+          usage.set(propName, value + 1);
         }
       }
     }
@@ -65,10 +67,11 @@ function updateUsageFromFile({ usage, filename, component }) {
 }
 
 function getUsage(component, options) {
-  const filenames = glob.sync(options.files, {
-    cwd: options.directory,
+  const filenames = globby.sync(options.files, {
+    cwd: options.directory || process.cwd(),
+    gitignore: options.gitignore,
     absolute: true,
-    nodir: true
+    onlyFiles: true
   });
   const usage = new Map();
   for (const filename of filenames) {
