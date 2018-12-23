@@ -29,16 +29,19 @@ function getPropName(node) {
 
 function safeParse(filename) {
   try {
-    return parse(fs.readFileSync(filename, "utf-8"), {
+    return parse(fs.readFileSync(filename, "utf8"), {
       sourceType: "unambiguous",
+      allowReturnOutsideFunction: true,
       plugins: [
         filename.endsWith(".tsx") ? "typescript" : "flow",
         "jsx",
+        "dynamicImport",
         "classProperties",
         "objectRestSpread"
       ]
     });
   } catch (error) {
+    console.log(error);
     if (error instanceof SyntaxError) {
       return null;
     }
