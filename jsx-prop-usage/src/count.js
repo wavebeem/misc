@@ -127,8 +127,9 @@ function count(component, options) {
       }
       return 0;
     });
-    console.log(`Total prop usage for <${component}>`);
-    console.log(chars.boxHoriz.repeat(30));
+    const s = `Total prop usage for <${component}>`;
+    console.log(s);
+    console.log(chars.boxHoriz.repeat(s.length));
     const maxLen = propCounts[0].count.toString().length;
     for (const { name, count } of propCounts) {
       console.log(
