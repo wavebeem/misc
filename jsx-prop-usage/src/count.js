@@ -96,6 +96,19 @@ function getUsage(component, options) {
   return usage;
 }
 
+function textMeter(count, total) {
+  let size = 10;
+  const first = Math.ceil((count / total) * size);
+  return chars.boxFull.repeat(first).padEnd(size, chars.boxLight);
+}
+
+const chars = {
+  boxHoriz: "\u{2500}",
+  boxVert: "\u{2502}",
+  boxLight: "\u{2591}",
+  boxFull: "\u{2588}"
+};
+
 function count(component, options) {
   const { componentCount, propCounts } = getUsage(component, options);
   if (propCounts.length > 0) {
@@ -114,13 +127,21 @@ function count(component, options) {
       }
       return 0;
     });
-    console.log(`<${component}> was used ${componentCount} time(s)`);
-    console.log();
+    console.log(`Total prop usage for <${component}>`);
+    console.log(chars.boxHoriz.repeat(30));
     const maxLen = propCounts[0].count.toString().length;
     for (const { name, count } of propCounts) {
-      console.log(count.toString().padStart(maxLen), name);
+      console.log(
+        [
+          count.toString().padStart(maxLen),
+          textMeter(count, componentCount),
+          name
+        ].join("  ")
+      );
     }
   }
+  console.log();
+  console.log(`<${component}> was used ${componentCount} time(s)`);
 }
 
 exports.default = count;
