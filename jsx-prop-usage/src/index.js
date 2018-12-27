@@ -6,8 +6,10 @@ const props = require("./props").props;
 program.version(pkg.version, "-v, --version");
 
 program
-  .command("props <component>")
-  .description("counts the number of occurrences of each prop for a component")
+  .command("props <component> [otherComponents...]")
+  .description(
+    "counts the number of occurrences of each prop for the specified components"
+  )
   .option("--no-gitignore", "disable reading .gitignore files")
   .option(
     "--directory <directory>",

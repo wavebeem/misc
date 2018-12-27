@@ -109,12 +109,14 @@ const chars = {
   boxFull: "\u{2588}"
 };
 
-function props(...args) {
-  if (args.length > 2) {
-    console.error("props: too many arguments");
-    process.exit(1);
+function props(component, otherComponents, options) {
+  oneProp(component, options);
+  for (const comp of otherComponents) {
+    oneProp(comp, options);
   }
-  const [component, options] = args;
+}
+
+function oneProp(component, options) {
   const { componentCount, propCounts } = getUsage(component, options);
   if (propCounts.length > 0) {
     propCounts.sort((a, b) => {
