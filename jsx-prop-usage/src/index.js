@@ -1,7 +1,7 @@
 const program = require("commander");
 
 const pkg = require("../package.json");
-const count = require("./count").default;
+const count = require("./count").count;
 
 program.version(pkg.version, "-v, --version");
 
@@ -20,14 +20,6 @@ program
   )
   .action(count);
 
-// No arguments
-if (process.argv.length === 2) {
-  console.error("Error: no command given");
-  console.error();
-  program.outputHelp();
-  process.exit(1);
-}
-
 // Unknown command
 program.on("command:*", () => {
   console.error("Invalid command: %s", program.args.join(" "));
@@ -36,4 +28,15 @@ program.on("command:*", () => {
   process.exit(1);
 });
 
-program.parse(process.argv);
+function main() {
+  // No arguments
+  if (process.argv.length === 2) {
+    console.error("Error: no command given");
+    console.error();
+    program.outputHelp();
+    process.exit(1);
+  }
+  program.parse(process.argv);
+}
+
+exports.main = main;

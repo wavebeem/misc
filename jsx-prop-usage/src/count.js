@@ -109,7 +109,12 @@ const chars = {
   boxFull: "\u{2588}"
 };
 
-function count(component, options) {
+function count(...args) {
+  if (args.length > 2) {
+    console.error("count: too many arguments");
+    process.exit(1);
+  }
+  const [component, options] = args;
   const { componentCount, propCounts } = getUsage(component, options);
   if (propCounts.length > 0) {
     propCounts.sort((a, b) => {
@@ -145,4 +150,4 @@ function count(component, options) {
   console.log(`<${component}> was used ${componentCount} time(s)`);
 }
 
-exports.default = count;
+exports.count = count;
