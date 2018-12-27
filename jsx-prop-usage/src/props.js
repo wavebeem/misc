@@ -109,9 +109,9 @@ const chars = {
   boxFull: "\u{2588}"
 };
 
-function count(...args) {
+function props(...args) {
   if (args.length > 2) {
-    console.error("count: too many arguments");
+    console.error("props: too many arguments");
     process.exit(1);
   }
   const [component, options] = args;
@@ -150,4 +150,4 @@ function count(...args) {
   console.log(`<${component}> was used ${componentCount} time(s)`);
 }
 
-exports.count = count;
+exports.props = props;

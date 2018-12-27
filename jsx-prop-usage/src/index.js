@@ -1,12 +1,12 @@
 const program = require("commander");
 
 const pkg = require("../package.json");
-const count = require("./count").count;
+const props = require("./props").props;
 
 program.version(pkg.version, "-v, --version");
 
 program
-  .command("count <component>")
+  .command("props <component>")
   .description("counts the number of occurrences of each prop for a component")
   .option("--no-gitignore", "disable reading .gitignore files")
   .option(
@@ -18,7 +18,7 @@ program
     "glob pattern used to find input files",
     "**/*.{js,jsx,tsx}"
   )
-  .action(count);
+  .action(props);
 
 // Unknown command
 program.on("command:*", () => {
