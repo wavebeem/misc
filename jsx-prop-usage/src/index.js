@@ -1,7 +1,7 @@
 const program = require("commander");
 
 const pkg = require("../package.json");
-const props = require("./props").props;
+const props = require("./command-props").props;
 
 program.version(pkg.version, "-v, --version");
 
