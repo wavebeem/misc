@@ -5,11 +5,16 @@ const props = require("./command-props").props;
 
 program.version(pkg.version, "-v, --version");
 
+// TODO:
+// - Add option to sort alphabetically
+// - Chart usage of components vs. each other
+// - What should this package be called?
+// - Should there even _be_ commands? Should this just be one command
+// - Flag to disable colorized output
+
 program
-  .command("props <component> [otherComponents...]")
-  .description(
-    "counts the number of occurrences of each prop for the specified components"
-  )
+  .command("props [components...]")
+  .description("counts the number of occurrences of each prop")
   .option("--no-gitignore", "disable reading .gitignore files")
   .option(
     "--directory <directory>",

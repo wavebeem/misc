@@ -26,26 +26,38 @@ class Counter {
     map.set(prop, prev + 1);
   }
 
+  getComponentsList() {
+    return this.getSortedMap(this._componentCounts).map(x => x.name);
+  }
+
+  getSortedMap(map) {
+    return [...map]
+      .map(([name, count]) => {
+        return { name, count };
+      })
+      .sort((a, b) => {
+        if (b.count < a.count) {
+          return -1;
+        }
+        if (b.count > a.count) {
+          return 1;
+        }
+        if (a.name < b.name) {
+          return -1;
+        }
+        if (a.name > b.name) {
+          return 1;
+        }
+        return 0;
+      });
+  }
+
   getComponentReport(component) {
+    if (!component) {
+      throw new Error();
+    }
     const componentCount = this._componentCounts.get(component);
-    const propCounts = [...this._propCounts.get(component)].map(
-      ([name, count]) => ({ name, count })
-    );
-    propCounts.sort((a, b) => {
-      if (b.count < a.count) {
-        return -1;
-      }
-      if (b.count > a.count) {
-        return 1;
-      }
-      if (a.name < b.name) {
-        return -1;
-      }
-      if (a.name > b.name) {
-        return 1;
-      }
-      return 0;
-    });
+    const propCounts = this.getSortedMap(this._propCounts.get(component));
     return { componentCount, propCounts };
   }
 }
@@ -108,7 +120,7 @@ function updateUsageFromFile({ componentsSet, counter, filename }) {
         return;
       }
       const name = getDottedName(path.node.name);
-      if (!componentsSet.has(name)) {
+      if (componentsSet.size > 0 && !componentsSet.has(name)) {
         return;
       }
       counter.incrementComponentUsage(name);
@@ -135,8 +147,8 @@ function getUsage({ componentsSet, counter, options }) {
 }
 
 function textMeter(count, total) {
-  const CHAR_BOX_FULL = "\u{2588}";
-  const CHAR_BOX_LIGHT = "\u{2591}";
+  const CHAR_BOX_FULL = chalk.bold.green("*");
+  const CHAR_BOX_LIGHT = chalk.bold.red("-");
   const size = 10;
   let str = "";
   let first = Math.ceil((count / total) * size);
@@ -150,31 +162,36 @@ function textMeter(count, total) {
   return str;
 }
 
-function props(component, otherComponents, options) {
-  const componentsSet = new Set([component, ...otherComponents]);
+function props(components, options) {
+  const componentsSet = new Set(components);
   const counter = new Counter();
   getUsage({ componentsSet, counter, options });
-  for (const comp of componentsSet) {
+  for (const comp of counter.getComponentsList()) {
     printReport(comp, counter.getComponentReport(comp));
   }
 }
 
 function printHeading(...args) {
-  console.log("\n\n" + chalk.bold(...args) + "\n");
+  console.log();
+  console.log(chalk.cyan(...args));
 }
 
 function printReport(component, report) {
   const { componentCount, propCounts } = report;
   const word = componentCount === 1 ? "time" : "times";
-  printHeading(
-    `<${component}> was used ${componentCount} ${word}`,
-    "with the following prop usage "
-  );
+  const compName = chalk.bold(`<${component}>`);
+  const first = `${compName} was used ${componentCount} ${word}`;
+  if (propCounts.length === 0) {
+    printHeading(first, "without any props");
+    return;
+  }
+  printHeading(first, "with the following prop usage:");
   const maxLen = propCounts[0].count.toString().length;
   for (const { name, count } of propCounts) {
     console.log(
       [
-        count.toString().padStart(maxLen),
+        "",
+        chalk.bold(count.toString().padStart(maxLen)),
         textMeter(count, componentCount),
         name
       ].join("  ")
