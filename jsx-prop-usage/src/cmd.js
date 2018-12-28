@@ -162,7 +162,7 @@ function textMeter(count, total) {
   return str;
 }
 
-function props(components, options) {
+function cmd(components, options) {
   const componentsSet = new Set(components);
   const counter = new Counter();
   getUsage({ componentsSet, counter, options });
@@ -199,4 +199,4 @@ function printReport(component, report) {
   }
 }
 
-exports.props = props;
+exports.default = cmd;
