@@ -1,11 +1,9 @@
-const path = require("path");
 const program = require("commander");
 
 const pkg = require("../package.json");
 const cmd = require("./cmd").default;
 
-const CMD_NAME = path.basename(process.argv[1]);
-
+program.name(pkg.name);
 program.version(pkg.version, "-v, --version");
 
 // TODO:
@@ -33,10 +31,10 @@ program.on("--help", () => {
   console.log(`
 Examples:
   # Display info for every component
-  $ ${CMD_NAME}
+  $ ${pkg.name}
 
   # Display info only for <div> and <Tab.Container>
-  $ ${CMD_NAME} div Tab.Container
+  $ ${pkg.name} div Tab.Container
 `);
 });
 
