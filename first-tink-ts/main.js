@@ -1,3 +1,2 @@
 const P = require("parsimmon");
-
-console.log(P);
+console.log(P.string);
