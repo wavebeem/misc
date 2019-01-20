@@ -7,6 +7,7 @@ enum Keywords {
 }
 
 const x: number = "oopsy";
+// const x = "oopsy";
 
 console.log(P.string);
 console.log(Keywords.FOR);
