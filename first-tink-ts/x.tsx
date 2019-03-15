@@ -6,7 +6,12 @@ function h(...args: any) {
   return [JSX, ...args];
 }
 
-function Foo(props: any) {
+interface FooProps {
+  id?: string;
+  children?: string;
+}
+
+function Foo(props: FooProps) {
   return props.children
 }
 
