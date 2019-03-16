@@ -12,7 +12,10 @@ def sep_by(content, separator):
     return sep_by1(content, separator) | (T.Value("") >= (lambda _: []))
 
 
-# TODO
+json_ws = T.Regexp(r"[ \n\r\t]*")
+
+
+# TODO: JSON strings are complicated and I'm feeling lazy
 #
 # string = quotation-mark *char quotation-mark
 #
@@ -37,11 +40,33 @@ json_string = T.Namespace(
     T.Value('"') >> (T.Regexp(r"[^\"]+") @ "value") >> T.Value('"')
 ) >= (lambda d: d["value"])
 
+json_sep = json_ws >> T.Value(",") >> json_ws
+
 json_array = T.Namespace(
     T.Value("[")
-    >> (sep_by(T.Ref(lambda: json_value), T.Regexp(r",\s+")) @ "items")
+    >> json_ws
+    >> (sep_by(T.Ref(lambda: json_value), json_sep) @ "items")
+    >> json_ws
     >> T.Value("]")
 ) >= (lambda d: d["items"])
+
+json_pair = T.Namespace(
+    (json_string @ "key")
+    >> json_ws
+    >> T.Value(":")
+    >> json_ws
+    >> (T.Ref(lambda: json_value) @ "value")
+) >= (lambda d: (d["key"], d["value"]))
+
+json_pairs = sep_by(json_pair, json_sep) >= dict
+
+json_object = T.Namespace(
+    T.Value("{")
+    >> json_ws
+    >> (json_pairs @ "object")
+    >> json_ws
+    >> T.Value("}")
+) >= (lambda d: d["object"])
 
 
 def handle_json_number(d):
@@ -62,23 +87,39 @@ json_true = T.Value("true") >= (lambda _: True)
 json_false = T.Value("false") >= (lambda _: False)
 json_null = T.Value("null") >= (lambda _: None)
 
-json_value = (
-    json_true | json_false | json_null | json_number | json_string | json_array
-)
+json_value = T.Namespace(
+    json_ws
+    >> (
+        (
+            json_true
+            | json_false
+            | json_null
+            | json_number
+            | json_string
+            | json_array
+            | json_object
+        )
+        @ "value"
+    )
+    >> json_ws
+) >= (lambda d: d["value"])
 
 
 def main():
     examples = (
         '"hi"',
-        "true",
         "false",
         "null",
+        "  \r\t true     \n",
         "2",
         "3.1",
         "4",
         "[1]",
         '[[1, ["a"]], 2]',
+        # Fail: JSON disallows starting with 0 to avoid octal numbers
         "03.14",
+        "{}",
+        '{"a": 1, "b":[{}, {}]}',
         "3.0140E-1",
     )
     for ex in examples:
