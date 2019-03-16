@@ -1,3 +1,4 @@
+import json
 import trishula as T
 
 
@@ -36,9 +37,55 @@ json_ws = T.Regexp(r"[ \n\r\t]*")
 # quotation-mark = %x22      ; "
 #
 # unescaped = %x20-21 / %x23-5B / %x5D-10FFFF
-json_string = T.Namespace(
-    T.Value('"') >> (T.Regexp(r"[^\"]+") @ "value") >> T.Value('"')
-) >= (lambda d: d["value"])
+
+# character
+# '0020' . '10FFFF' - '"' - '\'
+# '\' escape
+
+# escape
+# '"'
+# '\'
+# '/'
+# 'b'
+# 'n'
+# 'r'
+# 't'
+# 'u' hex hex hex hex
+
+json_quote = T.Value('\\"') >= (lambda: '"')
+json_backslash = T.Value("\\\\") >= (lambda: "\\")
+json_slash = T.Value("\\/") >= (lambda: "/")
+json_backspace = T.Value("\\b") >= (lambda: "\b")
+json_lf = T.Value("\\n") >= (lambda: "\n")
+json_cr = T.Value("\\r") >= (lambda: "\r")
+json_tab = T.Value("\\t") >= (lambda: "\t")
+json_unicode = (T.Value("\\u") >> T.Regexp(r"[a-zA-Z0-9]{4}")) >= (
+    lambda x: chr(int(x[1], base=16))
+)
+json_char_escaped = (
+    json_quote
+    | json_backslash
+    | json_slash
+    | json_backspace
+    | json_lf
+    | json_cr
+    | json_tab
+    | json_unicode
+)
+json_char_unescaped = T.Regexp(r"[^\"\\]+")
+json_char = json_char_escaped | json_char_unescaped
+
+
+def handle_json_string(d):
+    s = "".join(d["value"])
+    s = s.encode("utf-8", "surrogatepass").decode("utf-8", "strict")
+    return s
+
+
+json_string = (
+    T.Namespace(T.Value('"') >> (~json_char @ "value") >> T.Value('"'))
+    >= handle_json_string
+)
 
 json_sep = json_ws >> T.Value(",") >> json_ws
 
@@ -107,24 +154,32 @@ json_value = T.Namespace(
 
 def main():
     examples = (
-        '"hi"',
-        "false",
-        "null",
+        json.dumps("hi"),
+        json.dumps(True),
+        json.dumps(None),
         "  \r\t true     \n",
-        "2",
-        "3.1",
-        "4",
-        "[1]",
-        '[[1, ["a"]], 2]',
+        json.dumps(2),
+        json.dumps(3.1),
+        json.dumps(4),
+        json.dumps([[1, ["a"]], 2]),
+        # TODO: Handle surrogate pairs correctly
+        '"\\uD834\\uDD1E"',
         # Fail: JSON disallows starting with 0 to avoid octal numbers
         "03.14",
-        "{}",
-        '{"a": 1, "b":[{}, {}]}',
+        json.dumps({}),
+        json.dumps({"a": 1, "b": [{}, {}]}),
         "3.0140E-1",
     )
     for ex in examples:
         result = T.Parser().parse(json_value, ex)
-        print(vars(result))
+        if result.status == T.Status.SUCCEED:
+            print()
+            print("Input  :", repr(ex))
+            print("Output :", repr(result.value))
+        else:
+            print()
+            print("Input  :", repr(ex))
+            print("Fail   :", vars(result))
 
 
 main()
