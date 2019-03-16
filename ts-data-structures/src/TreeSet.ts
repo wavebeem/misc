@@ -139,16 +139,4 @@ class TreeSet<T> implements Iterable<T> {
   }
 }
 
-const set = new TreeSet<number>((a, b) => a - b)
-  .add(2)
-  .add(1)
-  .add(3);
-
-console.log(`has(3): ${set.has(3)}`);
-console.log(`size: ${set.size}`);
-console.log([...set]);
-console.log("delete(3)");
-set.delete(3);
-console.log(`size: ${set.size}`);
-console.log(`has(3): ${set.has(3)}`);
-console.log([...set]);
+export default TreeSet;
