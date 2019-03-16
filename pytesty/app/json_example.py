@@ -1,4 +1,3 @@
-import json
 import trishula as T
 
 
@@ -14,43 +13,6 @@ def sep_by(content, separator):
 
 
 json_ws = T.Regexp(r"[ \n\r\t]*")
-
-
-# TODO: JSON strings are complicated and I'm feeling lazy
-#
-# string = quotation-mark *char quotation-mark
-#
-# char = unescaped /
-#     escape (
-#         %x22 /          ; "    quotation mark  U+0022
-#         %x5C /          ; \    reverse solidus U+005C
-#         %x2F /          ; /    solidus         U+002F
-#         %x62 /          ; b    backspace       U+0008
-#         %x66 /          ; f    form feed       U+000C
-#         %x6E /          ; n    line feed       U+000A
-#         %x72 /          ; r    carriage return U+000D
-#         %x74 /          ; t    tab             U+0009
-#         %x75 4HEXDIG )  ; uXXXX                U+XXXX
-#
-# escape = %x5C              ; \
-#
-# quotation-mark = %x22      ; "
-#
-# unescaped = %x20-21 / %x23-5B / %x5D-10FFFF
-
-# character
-# '0020' . '10FFFF' - '"' - '\'
-# '\' escape
-
-# escape
-# '"'
-# '\'
-# '/'
-# 'b'
-# 'n'
-# 'r'
-# 't'
-# 'u' hex hex hex hex
 
 json_quote = T.Value('\\"') >= (lambda: '"')
 json_backslash = T.Value("\\\\") >= (lambda: "\\")
@@ -78,7 +40,7 @@ json_char = json_char_escaped | json_char_unescaped
 
 def handle_json_string(d):
     s = "".join(d["value"])
-    s = s.encode("utf-8", "surrogatepass").decode("utf-8", "strict")
+    s = s.encode("utf-16", "surrogatepass").decode("utf-16")
     return s
 
 
@@ -153,6 +115,8 @@ json_value = T.Namespace(
 
 
 def main():
+    import json
+
     examples = (
         json.dumps("hi"),
         json.dumps(True),
@@ -162,8 +126,8 @@ def main():
         json.dumps(3.1),
         json.dumps(4),
         json.dumps([[1, ["a"]], 2]),
-        # TODO: Handle surrogate pairs correctly
-        '"\\uD834\\uDD1E"',
+        json.dumps("café käse"),
+        json.dumps("\ud834\udd1e"),
         # Fail: JSON disallows starting with 0 to avoid octal numbers
         "03.14",
         json.dumps({}),
@@ -172,14 +136,14 @@ def main():
     )
     for ex in examples:
         result = T.Parser().parse(json_value, ex)
+        print()
+        print()
         if result.status == T.Status.SUCCEED:
-            print()
-            print("Input  :", repr(ex))
-            print("Output :", repr(result.value))
+            print("Input :", repr(ex))
+            print("Value :", repr(result.value))
         else:
-            print()
-            print("Input  :", repr(ex))
-            print("Fail   :", vars(result))
+            print("Input :", repr(ex))
+            print("Error :", vars(result))
 
 
 main()
