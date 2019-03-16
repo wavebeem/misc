@@ -7,6 +7,66 @@ class TreeBranch<T> implements Iterable<T> {
     this.item = item;
   }
 
+  add(cmp: Comparator<T>, item: T): boolean {
+    const n = cmp(item, this.item);
+    if (n < 0) {
+      if (this.left) {
+        this.left.add(cmp, item);
+      } else {
+        this.left = new TreeBranch(item);
+        return true;
+      }
+    } else if (n > 0) {
+      if (this.right) {
+        this.right.add(cmp, item);
+      } else {
+        this.right = new TreeBranch(item);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  delete(cmp: Comparator<T>, item: T): boolean {
+    if (this.left && cmp(item, this.left.item) === 0) {
+      const node = this.left;
+      this.left = node.left;
+      if (node.right) {
+        this.add(cmp, node.right.item);
+      }
+      return true;
+    }
+    if (this.right && cmp(item, this.right.item) === 0) {
+      const node = this.right;
+      this.right = node.right;
+      if (node.left) {
+        this.add(cmp, node.left.item);
+      }
+      return true;
+    }
+    if (this.left && this.left.delete(cmp, item)) {
+      return true;
+    }
+    if (this.right && this.right.delete(cmp, item)) {
+      return true;
+    }
+    return false;
+  }
+
+  has(cmp: Comparator<T>, item: T): boolean {
+    const n = cmp(item, this.item);
+    if (n === 0) {
+      return true;
+    }
+    if (n < 0 && this.left && this.left.has(cmp, item)) {
+      return true;
+    }
+    if (n > 0 && this.right && this.right.has(cmp, item)) {
+      return true;
+    }
+    return false;
+  }
+
   *[Symbol.iterator](): IterableIterator<T> {
     if (this.left) {
       yield* this.left;
@@ -18,14 +78,14 @@ class TreeBranch<T> implements Iterable<T> {
   }
 }
 
-type TreeSetComparator<T> = (a: T, b: T) => number;
+type Comparator<T> = (a: T, b: T) => number;
 
 class TreeSet<T> implements Iterable<T> {
   private _root?: TreeBranch<T> = undefined;
-  private _cmp: TreeSetComparator<T>;
+  private _cmp: Comparator<T>;
   private _size: number = 0;
 
-  constructor(cmp: TreeSetComparator<T>) {
+  constructor(cmp: Comparator<T>) {
     this._cmp = cmp;
   }
 
@@ -35,7 +95,7 @@ class TreeSet<T> implements Iterable<T> {
 
   add(item: T): this {
     if (this._root) {
-      if (this._add(this._root, item)) {
+      if (this._root.add(this._cmp, item)) {
         this._size++;
       }
     } else {
@@ -43,26 +103,6 @@ class TreeSet<T> implements Iterable<T> {
       this._size++;
     }
     return this;
-  }
-
-  private _add(root: TreeBranch<T>, item: T): boolean {
-    const n = this._cmp(item, root.item);
-    if (n < 0) {
-      if (root.left) {
-        this._add(root.left, item);
-      } else {
-        root.left = new TreeBranch(item);
-        return true;
-      }
-    } else if (n > 0) {
-      if (root.right) {
-        this._add(root.right, item);
-      } else {
-        root.right = new TreeBranch(item);
-        return true;
-      }
-    }
-    return false;
   }
 
   delete(item: T): boolean {
@@ -73,55 +113,18 @@ class TreeSet<T> implements Iterable<T> {
       this.clear();
       return true;
     }
-    if (this._delete(this._root, item)) {
+    if (this._root.delete(this._cmp, item)) {
       this._size--;
       return true;
     }
     return false;
   }
 
-  private _delete(root: TreeBranch<T>, item: T): boolean {
-    if (root.left && this._cmp(item, root.left.item) === 0) {
-      const node = root.left;
-      root.left = node.left;
-      if (node.right) {
-        this._add(root, node.right.item);
-      }
-      return true;
-    }
-    if (root.right && this._cmp(item, root.right.item) === 0) {
-      const node = root.right;
-      root.right = node.right;
-      if (node.left) {
-        this._add(root, node.left.item);
-      }
-      return true;
-    }
-    return (
-      !!(root.left && this._delete(root.left, item)) ||
-      !!(root.right && this._delete(root.right, item))
-    );
-  }
-
   has(item: T): boolean {
     if (!this._root) {
       return false;
     }
-    return this._has(this._root, item);
-  }
-
-  private _has(root: TreeBranch<T>, item: T): boolean {
-    const n = this._cmp(item, root.item);
-    if (n === 0) {
-      return true;
-    }
-    if (n < 0 && root.left && this._has(root.left, item)) {
-      return true;
-    }
-    if (n > 0 && root.right && this._has(root.right, item)) {
-      return true;
-    }
-    return false;
+    return this._root.has(this._cmp, item);
   }
 
   clear() {
