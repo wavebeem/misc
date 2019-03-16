@@ -6,9 +6,13 @@ verify_ssl = true
 [dev-packages]
 pep8 = "*"
 rope = "*"
+black = "*"
 
 [packages]
 trishula = "*"
 
 [requires]
 python_version = "3.7"
+
+[pipenv]
+allow_prereleases = true
