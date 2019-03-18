@@ -44,6 +44,22 @@ export function map(parser: Parser, fn: (input: any) => any): Parser {
   };
 }
 
+export function many1(parser: Parser): Parser {
+  throw new Error("TODO: Implement");
+}
+
+export function many0(parser: Parser): Parser {
+  throw new Error("TODO: Implement");
+}
+
+export function sepBy1(parser: Parser): Parser {
+  throw new Error("TODO: Implement");
+}
+
+export function sepBy0(parser: Parser): Parser {
+  throw new Error("TODO: Implement");
+}
+
 export function eof(): Parser {
   return function*(state) {
     if (state.index === state.input.length) {
