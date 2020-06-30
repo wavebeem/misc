@@ -144,7 +144,6 @@ class Parser {
 
   parseString(): XString | undefined {
     const lq = this.accept("StringStart");
-    console.log({ lq });
     if (!lq) {
       return undefined;
     }
@@ -154,9 +153,7 @@ class Parser {
       chunks.push(chunk);
       chunk = this.parseStringChunk();
     }
-    console.log({ chunks });
     const rq = this.accept("StringEnd");
-    console.log({ rq });
     if (!rq) {
       return undefined;
     }
