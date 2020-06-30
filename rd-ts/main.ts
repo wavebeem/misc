@@ -10,12 +10,14 @@ class Tokenizer {
   input: string;
   index: number;
   tokens: XToken[];
+  state: string[];
   chunk: string;
 
   constructor(input: string) {
     this.input = input;
     this.index = 0;
     this.tokens = [];
+    this.state = [];
     this.chunk = "";
   }
 
@@ -49,6 +51,8 @@ class Tokenizer {
 
   tokenize(): XToken[] {
     const n = this.input.length;
+    // TODO: Add a string state, StringInner tokens, and some kind of
+    // StringInterpolation thing?
     while (this.index < n) {
       if (this.match(/\(/)) {
         this.emit("LeftParen");
