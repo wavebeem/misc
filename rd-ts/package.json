@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "debug": "node --inspect-brk -r ts-node/register main.ts",
     "start": "ts-node main.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

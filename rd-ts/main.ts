@@ -17,11 +17,11 @@ class Tokenizer {
     this.input = input;
     this.index = 0;
     this.tokens = [];
-    this.state = [];
+    this.state = ["Default"];
     this.chunk = "";
   }
 
-  emit(name: string) {
+  emit(name: string): void {
     const j = this.index + this.chunk.length;
     this.tokens.push({
       type: "XToken",
@@ -33,11 +33,14 @@ class Tokenizer {
     this.index = j;
   }
 
-  ignore() {
+  ignore(): void {
     this.index += this.chunk.length;
   }
 
-  match(regexp: RegExp) {
+  match(regexp: RegExp, state: string = "Default"): boolean {
+    if (this.state[this.state.length - 1] !== state) {
+      return false;
+    }
     // TODO: Respect /i flag on regexp
     const re = new RegExp(regexp.source, "y");
     re.lastIndex = this.index;
@@ -49,12 +52,32 @@ class Tokenizer {
     return false;
   }
 
+  beginState(state: string): void {
+    this.state.push(state);
+  }
+
+  endState(): void {
+    this.state.pop();
+  }
+
   tokenize(): XToken[] {
     const n = this.input.length;
-    // TODO: Add a string state, StringInner tokens, and some kind of
-    // StringInterpolation thing?
     while (this.index < n) {
-      if (this.match(/\(/)) {
+      if (this.match(/"/)) {
+        this.emit("StringStart");
+        this.beginState("String");
+      } else if (this.match(/[a-z ]+/, "String")) {
+        this.emit("StringChunk");
+      } else if (this.match(/\{/, "String")) {
+        this.emit("StringInterpolationStart");
+        this.beginState("Default");
+      } else if (this.match(/\}/)) {
+        this.emit("StringInterpolationEnd");
+        this.endState();
+      } else if (this.match(/"/, "String")) {
+        this.emit("StringEnd");
+        this.endState();
+      } else if (this.match(/\(/)) {
         this.emit("LeftParen");
       } else if (this.match(/\)/)) {
         this.emit("RightParen");
@@ -88,7 +111,12 @@ interface XSymbol extends XNode {
   value: string;
 }
 
-type XAtom = XSymbol | XList;
+interface XString extends XNode {
+  type: "XString";
+  chunks: (string | XAtom)[];
+}
+
+type XAtom = XSymbol | XString | XList;
 
 class Parser {
   index: number;
@@ -111,7 +139,53 @@ class Parser {
   }
 
   parseAtom(): XAtom | undefined {
-    return this.parseSymbol() || this.parseList();
+    return this.parseSymbol() || this.parseString() || this.parseList();
+  }
+
+  parseString(): XString | undefined {
+    const lq = this.accept("StringStart");
+    console.log({ lq });
+    if (!lq) {
+      return undefined;
+    }
+    const chunks: (string | XAtom)[] = [];
+    let chunk = this.parseStringChunk();
+    while (chunk !== undefined) {
+      chunks.push(chunk);
+      chunk = this.parseStringChunk();
+    }
+    console.log({ chunks });
+    const rq = this.accept("StringEnd");
+    console.log({ rq });
+    if (!rq) {
+      return undefined;
+    }
+    return {
+      type: "XString",
+      chunks,
+      start: lq.start,
+      end: rq.end,
+    };
+  }
+
+  parseStringChunk(): string | XAtom | undefined {
+    const str = this.accept("StringChunk");
+    if (str) {
+      return str.value;
+    }
+    const start = this.accept("StringInterpolationStart");
+    if (!start) {
+      return undefined;
+    }
+    const interp = this.parseAtom();
+    if (!interp) {
+      return undefined;
+    }
+    const end = this.accept("StringInterpolationEnd");
+    if (!end) {
+      return undefined;
+    }
+    return interp;
   }
 
   parseSymbol(): XSymbol | undefined {
@@ -177,6 +251,16 @@ class Serializer {
 
   helper(node: XAtom): any {
     switch (node.type) {
+      case "XString":
+        return [
+          "string",
+          ...node.chunks.map((c) => {
+            if (typeof c === "string") {
+              return c;
+            }
+            return this.helper(c);
+          }),
+        ];
       case "XSymbol":
         return node.value;
       case "XList":
@@ -188,13 +272,14 @@ class Serializer {
 }
 
 function main() {
+  // const code = `"abc{"d{e}f"}g"`;
   const code = `
 
-; comment
-(define (g cool a b) ; nice
-  (list (f a b) (cool)))
+  ; comment
+  (define (g cool a b) ; nice
+    (list (f a b) (cool) "hello {world}"))
 
-`;
+  `;
   const tokens = new Tokenizer(code).tokenize();
   console.log(tokens);
   const node = new Parser(tokens).parse();
