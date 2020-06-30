@@ -42,7 +42,7 @@ class Tokenizer {
       return false;
     }
     // TODO: Respect /i flag on regexp
-    const re = new RegExp(regexp.source, "y");
+    const re = new RegExp(regexp.source, regexp.ignoreCase ? "iy" : "y");
     re.lastIndex = this.index;
     const m = this.input.match(re);
     if (m) {
