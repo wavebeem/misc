@@ -32,15 +32,17 @@ class LispTokenizer extends rd.Tokenizer<LispToken, TokenizerState> {
     } else if (this.match(/[a-z]+/)) {
       this.emit("Symbol");
     } else {
-      throw new Error(`parse error at character ${this.index + 1}`);
+      throw new Error(
+        `parse error at line ${this.location.line}, column ${this.location.column}`
+      );
     }
   }
 }
 
 interface LispNode {
   type: string;
-  start: number;
-  end: number;
+  start: rd.SourceLocation;
+  end: rd.SourceLocation;
 }
 
 interface LispList extends LispNode {
@@ -149,21 +151,18 @@ type LispToken =
   | "Symbol";
 
 // const code = `"abc{"d{e}f"}g"`;
-const code = "()()";
-// const code = `
+// const code = "()()";
+const code = `
 
-//   ; comment
-//   (define (g cool a b world) ; nice
-//     (list (f a b) (cool) "hello {world}"))
+  ; comment
+  (define (g cool a b world) ; nice
+    (list (f a b) (cool) "hello {world}"))
 
-//   `;
+  `;
 
-// const tokens = new LispTokenizer().tokenize(code);
-// console.log(show(tokens));
+const tokens = new LispTokenizer().tokenize(code);
+console.log(show(tokens));
 
-// const node = new LispParser().parseTokens(tokens);
-// console.log();
-// console.log(show(node));
-
-const node = rd.parse(new LispTokenizer(), new LispParser(), code);
+const node = new LispParser().parseTokens(tokens);
+console.log();
 console.log(show(node));

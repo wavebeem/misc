@@ -1,16 +1,53 @@
+export class SourceLocation {
+  index: number;
+  line: number;
+  column: number;
+
+  constructor(index: number, line: number, column: number) {
+    this.index = index;
+    this.line = line;
+    this.column = column;
+  }
+
+  addChunk(chunk: string): { end: SourceLocation; afterEnd: SourceLocation } {
+    let { index, line, column } = this;
+    const allButLast = chunk.slice(0, -1);
+    const last = chunk.slice(-1);
+    for (const ch of allButLast) {
+      index++;
+      if (ch === "\n") {
+        line++;
+        column = 1;
+      } else {
+        column++;
+      }
+    }
+    const end = new SourceLocation(index, line, column);
+    for (const ch of last) {
+      index++;
+      if (ch === "\n") {
+        line++;
+        column = 1;
+      } else {
+        column++;
+      }
+    }
+    const afterEnd = new SourceLocation(index, line, column);
+    return { end, afterEnd };
+  }
+}
+
 export class Token<Name extends string> {
   name: Name;
   value: string;
-  // TODO: Make a SourceLocation type for line/column/index numbers
-  start: number;
-  end: number;
+  start: SourceLocation;
+  end: SourceLocation;
 
   constructor(options: {
     name: Name;
     value: string;
-    // TODO: Make a TokenLocation type for line/column/index numbers
-    start: number;
-    end: number;
+    start: SourceLocation;
+    end: SourceLocation;
   }) {
     this.name = options.name;
     this.value = options.value;
@@ -78,32 +115,32 @@ class ResultFail<A> implements BaseResult<A> {
 
 export abstract class Tokenizer<Name extends string, State extends string> {
   input: string;
-  index: number;
+  location: SourceLocation;
   tokens: Token<Name>[];
   state: State[];
   chunk: string;
 
   constructor() {
     this.input = "";
-    this.index = 0;
+    this.location = new SourceLocation(0, 1, 1);
     this.tokens = [];
     this.state = ["Default" as State];
     this.chunk = "";
   }
 
   emit(name: Name): void {
-    const j = this.index + this.chunk.length;
+    const { end, afterEnd } = this.location.addChunk(this.chunk);
     this.tokens.push({
       name,
       value: this.chunk,
-      start: this.index,
-      end: j - 1,
+      start: this.location,
+      end,
     });
-    this.index = j;
+    this.location = afterEnd;
   }
 
   ignore(): void {
-    this.index += this.chunk.length;
+    this.location = this.location.addChunk(this.chunk).afterEnd;
   }
 
   match(regexp: RegExp, state: State = "Default" as State): boolean {
@@ -111,7 +148,7 @@ export abstract class Tokenizer<Name extends string, State extends string> {
       return false;
     }
     const re = new RegExp(regexp.source, regexp.ignoreCase ? "iy" : "y");
-    re.lastIndex = this.index;
+    re.lastIndex = this.location.index;
     const m = this.input.match(re);
     if (m) {
       this.chunk = m[0];
@@ -129,13 +166,13 @@ export abstract class Tokenizer<Name extends string, State extends string> {
   }
 
   tokenize(input: string): Token<Name>[] {
-    this.index = 0;
+    this.location = new SourceLocation(0, 1, 1);
     this.tokens = [];
     this.state = ["Default" as State];
     this.chunk = "";
     this.input = input;
     const n = this.input.length;
-    while (this.index < n) {
+    while (this.location.index < n) {
       this.next();
     }
     return this.tokens;
@@ -195,6 +232,7 @@ export function many<A>(fn: () => Result<A>): Result<A[]> {
     result.map((value) => {
       items.push(value);
     });
+    result = fn();
   }
   return ok(items);
 }
@@ -251,16 +289,4 @@ export function all<T>(funcs: Iterable<() => Result<T>>): Result<T[]> {
       return ok([first, ...rest]);
     });
   });
-}
-
-export function parse<
-  Node,
-  Name extends string,
-  State extends string,
-  T extends Tokenizer<Name, State>,
-  P extends Parser<Name, Node>
->(tokenizer: T, parser: P, code: string): Result<Node> {
-  const tokens = tokenizer.tokenize(code);
-  const node = parser.parseTokens(tokens);
-  return node;
 }
