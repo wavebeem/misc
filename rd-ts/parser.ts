@@ -40,7 +40,7 @@ export class ResultOK<A> {
     return fn(this.value);
   }
 
-  or(_fn: () => Result<A>): Result<A> {
+  or<B>(_fn: () => Result<B>): Result<A | B> {
     return new ResultOK(this.value);
   }
 }
@@ -64,7 +64,7 @@ export class ResultFail<A> {
     return new ResultFail(this.message);
   }
 
-  or(fn: () => Result<A>): Result<A> {
+  or<B>(fn: () => Result<B>): Result<A | B> {
     return fn();
   }
 }
