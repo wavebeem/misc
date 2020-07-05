@@ -1,4 +1,4 @@
-import { Parser, Tokenizer } from "./parser";
+import { Parser, Result, ResultOK, ResultFail, Tokenizer } from "./parser";
 
 class LispTokenizer extends Tokenizer<LispToken, TokenizerState> {
   next(): void {
@@ -58,6 +58,66 @@ type LispAtom = LispSymbol | LispString | LispList;
 class LispParser extends Parser<LispToken, LispAtom> {
   parseAtom(): LispAtom | undefined {
     return this.parseSymbol() || this.parseString() || this.parseList();
+  }
+
+  parseAtom2(): Result<1 | 2 | 3> {
+    return this.parseSymbol2()
+      .or(() => this.take("RightParen").map((t) => t))
+      .or(() => this.take("Symbol").map((t) => t));
+    // return this.take("LeftParen").or(() => this.take("RightParen"));
+  }
+
+  parseSymbol2(): Result<LispSymbol> {
+    return this.takeFlatMap("Symbol", (token) => {
+      return new ResultOK({
+        type: "LispSymbol",
+        value: token.value,
+        start: token.start,
+        end: token.end,
+      });
+    });
+  }
+
+  parseStringChunk2(): Result<string | LispAtom> {
+    return this.takeFlatMap("StringChunk", (str) => {
+      return this.takeFlatMap("StringInterpolationStart", (start) => {});
+    });
+    const str = this.accept("StringChunk");
+    if (str) {
+      return str.value;
+    }
+    const start = this.accept("StringInterpolationStart");
+    if (!start) {
+      return undefined;
+    }
+    const interp = this.parseAtom();
+    if (!interp) {
+      return undefined;
+    }
+    const end = this.accept("StringInterpolationEnd");
+    if (!end) {
+      return undefined;
+    }
+    return interp;
+  }
+
+  parseString2(): Result<LispString> {
+    return this.takeFlatMap("StringStart", (lq) => {
+      const chunks: (string | LispAtom)[] = [];
+      let chunk = this.parseStringChunk2();
+      while (chunk.ok()) {
+        chunks.push(chunk);
+        chunk = this.parseStringChunk2();
+      }
+      return this.takeFlatMap("StringEnd", (rq) => {
+        return new ResultOK({
+          type: "LispString",
+          chunks,
+          start: lq.start,
+          end: rq.end,
+        });
+      });
+    });
   }
 
   parseString(): LispString | undefined {
@@ -139,8 +199,8 @@ class LispParser extends Parser<LispToken, LispAtom> {
     });
   }
 
-  parse(): LispAtom | undefined {
-    return this.parseAtom();
+  parse(): Result<LispAtom> {
+    return this.parseAtom2();
     // TODO: What if we have leftover tokens?
   }
 }

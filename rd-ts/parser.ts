@@ -1,4 +1,4 @@
-class Token<Name extends string> {
+export class Token<Name extends string> {
   name: Name;
   value: string;
   // TODO: Make a SourceLocation type for line/column/index numbers
@@ -16,6 +16,56 @@ class Token<Name extends string> {
     this.value = options.value;
     this.start = options.start;
     this.end = options.end;
+  }
+}
+
+export type Result<A> = ResultOK<A> | ResultFail<A>;
+
+export class ResultOK<A> {
+  value: A;
+
+  constructor(value: A) {
+    this.value = value;
+  }
+
+  ok() {
+    return true;
+  }
+
+  map<B>(fn: (a: A) => B): Result<B> {
+    return new ResultOK(fn(this.value));
+  }
+
+  flatMap<B>(fn: (a: A) => Result<B>): Result<B> {
+    return fn(this.value);
+  }
+
+  or(_fn: () => Result<A>): Result<A> {
+    return new ResultOK(this.value);
+  }
+}
+
+export class ResultFail<A> {
+  message: string;
+
+  constructor(message: string) {
+    this.message = message;
+  }
+
+  ok() {
+    return false;
+  }
+
+  map<B>(_fn: (a: A) => B): Result<B> {
+    return new ResultFail(this.message);
+  }
+
+  flatMap<B>(_fn: (a: A) => Result<B>): Result<B> {
+    return new ResultFail(this.message);
+  }
+
+  or(fn: () => Result<A>): Result<A> {
+    return fn();
   }
 }
 
@@ -110,6 +160,22 @@ export abstract class Parser<Name extends string, Node> {
     return undefined;
   }
 
+  take(name: Name): Result<Token<Name>> {
+    const token = this.accept(name);
+    if (token) {
+      return new ResultOK(token);
+    }
+    return new ResultFail(name);
+  }
+
+  takeFlatMap<T>(name: Name, fn: (token: Token<Name>) => Result<T>): Result<T> {
+    const token = this.accept(name);
+    if (token) {
+      return new ResultOK(token).flatMap(fn);
+    }
+    return new ResultFail(name);
+  }
+
   chain<T>(name: Name, fn: (token: Token<Name>) => T): T | undefined {
     const token = this.accept(name);
     if (token) {
@@ -118,5 +184,5 @@ export abstract class Parser<Name extends string, Node> {
     return undefined;
   }
 
-  abstract parse(): Node | undefined;
+  abstract parse(): Result<Node>;
 }
