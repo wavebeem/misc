@@ -21,7 +21,14 @@ export class Token<Name extends string> {
 
 export type Result<A> = ResultOK<A> | ResultFail<A>;
 
-export class ResultOK<A> {
+interface BaseResult<A> {
+  ok(): boolean;
+  map<B>(fn: (a: A) => B): Result<B>;
+  chain<B>(fn: (a: A) => Result<B>): Result<B>;
+  or<B>(_fn: () => Result<B>): Result<A | B>;
+}
+
+class ResultOK<A> implements BaseResult<A> {
   value: A;
 
   constructor(value: A) {
@@ -33,19 +40,19 @@ export class ResultOK<A> {
   }
 
   map<B>(fn: (a: A) => B): Result<B> {
-    return new ResultOK(fn(this.value));
+    return ok(fn(this.value));
   }
 
-  flatMap<B>(fn: (a: A) => Result<B>): Result<B> {
+  chain<B>(fn: (a: A) => Result<B>): Result<B> {
     return fn(this.value);
   }
 
   or<B>(_fn: () => Result<B>): Result<A | B> {
-    return new ResultOK(this.value);
+    return ok(this.value);
   }
 }
 
-export class ResultFail<A> {
+class ResultFail<A> implements BaseResult<A> {
   message: string;
 
   constructor(message: string) {
@@ -57,11 +64,11 @@ export class ResultFail<A> {
   }
 
   map<B>(_fn: (a: A) => B): Result<B> {
-    return new ResultFail(this.message);
+    return fail(this.message);
   }
 
-  flatMap<B>(_fn: (a: A) => Result<B>): Result<B> {
-    return new ResultFail(this.message);
+  chain<B>(_fn: (a: A) => Result<B>): Result<B> {
+    return fail(this.message);
   }
 
   or<B>(fn: () => Result<B>): Result<A | B> {
@@ -69,10 +76,7 @@ export class ResultFail<A> {
   }
 }
 
-export abstract class Tokenizer<
-  Name extends string,
-  State extends "Default" | string
-> {
+export abstract class Tokenizer<Name extends string, State extends string> {
   input: string;
   index: number;
   tokens: Token<Name>[];
@@ -145,44 +149,118 @@ export abstract class Parser<Name extends string, Node> {
   tokens: Token<Name>[];
   // error: string;
 
-  constructor(tokens: Token<Name>[]) {
+  constructor() {
     this.index = 0;
-    this.tokens = tokens;
+    this.tokens = [];
     // this.error = "";
   }
 
-  accept(name: Name): Token<Name> | undefined {
+  consume(name: Name): Result<Token<Name>> {
     const token = this.tokens[this.index];
     if (token.name === name) {
       this.index++;
-      return token;
+      return ok(token);
     }
-    return undefined;
+    return fail(name);
   }
 
-  take(name: Name): Result<Token<Name>> {
-    const token = this.accept(name);
-    if (token) {
-      return new ResultOK(token);
+  chain<T>(name: Name, fn: (token: Token<Name>) => Result<T>): Result<T> {
+    const token = this.consume(name);
+    if (token.ok()) {
+      return token.chain(fn);
     }
-    return new ResultFail(name);
+    return fail(name);
   }
 
-  takeFlatMap<T>(name: Name, fn: (token: Token<Name>) => Result<T>): Result<T> {
-    const token = this.accept(name);
-    if (token) {
-      return new ResultOK(token).flatMap(fn);
-    }
-    return new ResultFail(name);
-  }
-
-  chain<T>(name: Name, fn: (token: Token<Name>) => T): T | undefined {
-    const token = this.accept(name);
-    if (token) {
-      return fn(token);
-    }
-    return undefined;
+  parseTokens(tokens: Token<Name>[]): Result<Node> {
+    this.tokens = tokens;
+    return this.parse();
   }
 
   abstract parse(): Result<Node>;
+}
+
+export function ok<A>(value: A): Result<A> {
+  return new ResultOK(value);
+}
+
+export function fail<A>(message: string): Result<A> {
+  return new ResultFail(message);
+}
+
+export function many<A>(fn: () => Result<A>): Result<A[]> {
+  const items: A[] = [];
+  let result = fn();
+  while (result.ok()) {
+    result.map((value) => {
+      items.push(value);
+    });
+  }
+  return ok(items);
+}
+
+export function all<A>(funcs: readonly [() => Result<A>]): Result<[A]>;
+
+export function all<A, B>(
+  funcs: readonly [() => Result<A>, () => Result<B>]
+): Result<[A, B]>;
+
+export function all<A, B, C>(
+  funcs: readonly [() => Result<A>, () => Result<B>, () => Result<C>]
+): Result<[A, B, C]>;
+
+export function all<A, B, C, D>(
+  funcs: readonly [
+    () => Result<A>,
+    () => Result<B>,
+    () => Result<C>,
+    () => Result<D>
+  ]
+): Result<[A, B, C, D]>;
+
+export function all<A, B, C, D, E>(
+  funcs: readonly [
+    () => Result<A>,
+    () => Result<B>,
+    () => Result<C>,
+    () => Result<D>,
+    () => Result<E>
+  ]
+): Result<[A, B, C, D, E]>;
+
+export function all<A, B, C, D, E, F>(
+  funcs: readonly [
+    () => Result<A>,
+    () => Result<B>,
+    () => Result<C>,
+    () => Result<D>,
+    () => Result<E>,
+    () => Result<F>
+  ]
+): Result<[A, B, C, D, E, F]>;
+
+export function all<T>(funcs: Iterable<() => Result<T>>): Result<T[]> {
+  const ary = [...funcs] as const;
+  if (ary.length === 0) {
+    return ok([]);
+  }
+  const [fnFirst, ...fnRest] = ary;
+  return fnFirst().chain((first) => {
+    // Can't figure out how to make TypeScript happy here without `as any` :(
+    return all<T>(fnRest as any).chain((rest) => {
+      return ok([first, ...rest]);
+    });
+  });
+}
+
+export function parse<
+  Node,
+  Name extends string,
+  State extends string,
+  T extends Tokenizer<Name, State>,
+  P extends Parser<Name, Node>
+>(tokenizer: T, parser: P, code: string): Result<Node> {
+  const tokens = tokenizer.tokenize(code);
+  const node = parser.parseTokens(tokens);
+  return node;
 }
