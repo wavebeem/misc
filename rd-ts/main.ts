@@ -1,11 +1,11 @@
 import { inspect } from "util";
-import { Parser, Result, Tokenizer, ok, many, all, parse } from "./parser";
+import * as rd from "./rd";
 
 function show(value: any): string {
   return inspect(value, { colors: true, depth: null });
 }
 
-class LispTokenizer extends Tokenizer<LispToken, TokenizerState> {
+class LispTokenizer extends rd.Tokenizer<LispToken, TokenizerState> {
   next(): void {
     if (this.match(/"/)) {
       this.emit("StringStart");
@@ -60,16 +60,16 @@ interface LispString extends LispNode {
 
 type LispAtom = LispSymbol | LispString | LispList;
 
-class LispParser extends Parser<LispToken, LispAtom> {
-  parseAtom(): Result<LispAtom> {
+class LispParser extends rd.Parser<LispToken, LispAtom> {
+  parseAtom(): rd.Result<LispAtom> {
     return this.parseSymbol()
       .or(() => this.parseString())
       .or(() => this.parseList());
   }
 
-  parseSymbol(): Result<LispSymbol> {
+  parseSymbol(): rd.Result<LispSymbol> {
     return this.chain("Symbol", (token) => {
-      return ok({
+      return rd.ok({
         type: "LispSymbol",
         value: token.value,
         start: token.start,
@@ -78,53 +78,59 @@ class LispParser extends Parser<LispToken, LispAtom> {
     });
   }
 
-  parseString(): Result<LispString> {
-    return all([
-      () => this.consume("StringStart"),
-      () => many(() => this.parseStringChunk()),
-      () => this.consume("StringEnd"),
-    ]).chain(([start, chunks, end]) => {
-      return ok({
-        type: "LispString",
-        chunks,
-        start: start.start,
-        end: end.end,
+  parseString(): rd.Result<LispString> {
+    return rd
+      .all([
+        () => this.consume("StringStart"),
+        () => rd.many(() => this.parseStringChunk()),
+        () => this.consume("StringEnd"),
+      ])
+      .chain(([start, chunks, end]) => {
+        return rd.ok({
+          type: "LispString",
+          chunks,
+          start: start.start,
+          end: end.end,
+        });
       });
-    });
   }
 
-  parseStringChunk(): Result<string | LispAtom> {
-    return this.chain("StringChunk", (str) => ok(str.value)).or(() =>
+  parseStringChunk(): rd.Result<string | LispAtom> {
+    return this.chain("StringChunk", (str) => rd.ok(str.value)).or(() =>
       this.parseStringInterp()
     );
   }
 
-  parseStringInterp(): Result<LispAtom> {
-    return all([
-      () => this.consume("LeftBrace"),
-      () => this.parseAtom(),
-      () => this.consume("RightBrace"),
-    ]).chain(([_start, interp, _end]) => {
-      return ok(interp);
-    });
-  }
-
-  parseList(): Result<LispList> {
-    return all([
-      () => this.consume("LeftParen"),
-      () => many(() => this.parseAtom()),
-      () => this.consume("RightParen"),
-    ]).chain(([lp, items, rp]) => {
-      return ok({
-        type: "LispList",
-        items,
-        start: lp.start,
-        end: rp.end,
+  parseStringInterp(): rd.Result<LispAtom> {
+    return rd
+      .all([
+        () => this.consume("LeftBrace"),
+        () => this.parseAtom(),
+        () => this.consume("RightBrace"),
+      ])
+      .chain(([_start, interp, _end]) => {
+        return rd.ok(interp);
       });
-    });
   }
 
-  parse(): Result<LispAtom> {
+  parseList(): rd.Result<LispList> {
+    return rd
+      .all([
+        () => this.consume("LeftParen"),
+        () => rd.many(() => this.parseAtom()),
+        () => this.consume("RightParen"),
+      ])
+      .chain(([lp, items, rp]) => {
+        return rd.ok({
+          type: "LispList",
+          items,
+          start: lp.start,
+          end: rp.end,
+        });
+      });
+  }
+
+  parse(): rd.Result<LispAtom> {
     return this.parseAtom();
     // TODO: What if we have leftover tokens?
   }
@@ -159,5 +165,5 @@ const code = "()()";
 // console.log();
 // console.log(show(node));
 
-const node = parse(new LispTokenizer(), new LispParser(), code);
+const node = rd.parse(new LispTokenizer(), new LispParser(), code);
 console.log(show(node));
