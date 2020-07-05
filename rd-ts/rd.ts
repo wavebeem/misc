@@ -63,6 +63,7 @@ interface BaseResult<A> {
   map<B>(fn: (a: A) => B): Result<B>;
   chain<B>(fn: (a: A) => Result<B>): Result<B>;
   or<B>(_fn: () => Result<B>): Result<A | B>;
+  [Symbol.iterator](): IterableIterator<A>;
 }
 
 class ResultOK<A> implements BaseResult<A> {
@@ -86,6 +87,10 @@ class ResultOK<A> implements BaseResult<A> {
 
   or<B>(_fn: () => Result<B>): Result<A | B> {
     return ok(this.value);
+  }
+
+  *[Symbol.iterator]() {
+    yield this.value;
   }
 }
 
@@ -111,6 +116,8 @@ class ResultFail<A> implements BaseResult<A> {
   or<B>(fn: () => Result<B>): Result<A | B> {
     return fn();
   }
+
+  *[Symbol.iterator]() {}
 }
 
 export abstract class Tokenizer<Name extends string, State extends string> {
@@ -229,9 +236,9 @@ export function many<A>(fn: () => Result<A>): Result<A[]> {
   const items: A[] = [];
   let result = fn();
   while (result.ok()) {
-    result.map((value) => {
+    for (const value of result) {
       items.push(value);
-    });
+    }
     result = fn();
   }
   return ok(items);
