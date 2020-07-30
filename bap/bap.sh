@@ -24,7 +24,7 @@ bap.obj.get() {
     IFS= read -rd "" -n "$value_length" value
     IFS= read -rd ";" _
     if [[ $key = $target ]]; then
-      echo "$value"
+      echo -n "$value"
       return
     fi
   done
@@ -58,7 +58,7 @@ bap.parse() {
   local parser="$1"
   local input="$2"
   local index="$3"
-  local action="$(echo "$parser" | bap.obj.get action)"
+  local action="$(bap.obj.get action <<< "$parser")"
   eval "$action"
 }
 
@@ -80,10 +80,12 @@ bap.text() {
 }
 
 bap.match() {
+  set -x
   local regexp="$1"
   # TODO: Not a safe way to emulate variable closure...
+  local g_regexp="$(bap.global "$regexp")"
   bap.parser.create "
-    local regexp='$regexp'
+    local regexp=\"\$$g_regexp\"
   "'
     if [[ "${input:$index}" =~ ^$regexp ]]; then
       local text="${BASH_REMATCH[0]}"
@@ -94,6 +96,7 @@ bap.match() {
       bap.result.fail $index
     fi
   '
+  set +x
 }
 
 bap.or() {
@@ -111,4 +114,18 @@ bap.or() {
       bap.parse "$pb" "$input" "$index"
     fi
   '
+}
+
+__bap_global_index=0
+
+bap.global() {
+  local value="$1"
+  local name="__bap_global_var$__bap_global_index"
+  let "__bap_global_index++"
+  eval "$name=\$value"
+  echo -n "$name"
+}
+
+bap.and() {
+  : # TODO
 }
