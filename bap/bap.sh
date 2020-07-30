@@ -1,106 +1,114 @@
 # TODO: Create a custom object format directly in bash to speed this up?
-bap_obj_create() {
-  ruby -r json -e '
-    print(JSON.pretty_generate({}))
-  '
+bap.obj.create() {
+  echo -n ""
 }
 
-bap_obj_set() {
+bap.obj.set() {
+  local obj="$(cat)"
   local key="$1"
   local value="$2"
-  env key="$key" value="$value" ruby -r json -e '
-    obj = JSON.parse(STDIN.read)
-    obj[ENV["key"]] = ENV["value"]
-    print(JSON.pretty_generate(obj))
-  '
+  echo -n "${#key}:$key=${#value}:$value;$obj"
 }
 
-bap_obj_get() {
-  local key="$1"
-  env key="$key" ruby -r json -e '
-    obj = JSON.parse(STDIN.read)
-    print(obj[ENV["key"]])
-  '
+bap.obj.get() {
+  local target="$1"
+  local key
+  local key_length
+  local value
+  local value_length
+  local _
+  while IFS= read -rd ":" key_length; do
+    IFS= read -rd "" -n "$key_length" key
+    IFS= read -rd "=" _
+    IFS= read -rd ":" value_length
+    IFS= read -rd "" -n "$value_length" value
+    IFS= read -rd ";" _
+    if [[ $key = $target ]]; then
+      echo "$value"
+      return
+    fi
+  done
+  echo "no such key $target" >&2
 }
 
-bap_parser_create() {
+bap.parser.create() {
   local action="$1"
-  bap_obj_create |
-    bap_obj_set type "bap.parser" |
-    bap_obj_set action "$action"
+  bap.obj.create |
+    bap.obj.set action "$action" |
+    bap.obj.set type "bap.parser"
 }
 
-bap_result_ok() {
+bap.result.ok() {
   local index="$1"
   local value="$2"
-  bap_obj_create |
-    bap_obj_set type "bap.result.ok" |
-    bap_obj_set index "$index" |
-    bap_obj_set value "$value"
+  bap.obj.create |
+    bap.obj.set value "$value" |
+    bap.obj.set index "$index" |
+    bap.obj.set type "bap.result.ok"
 }
 
-bap_result_fail() {
+bap.result.fail() {
   local index="$1"
-  bap_obj_create |
-    bap_obj_set type "bap.result.fail" |
-    bap_obj_set index "$index"
+  bap.obj.create |
+    bap.obj.set index "$index" |
+    bap.obj.set type "bap.result.fail"
 }
 
-bap_parse() {
+bap.parse() {
   local parser="$1"
   local input="$2"
   local index="$3"
-  local action="$(echo "$parser" | bap_obj_get action)"
+  local action="$(echo "$parser" | bap.obj.get action)"
   eval "$action"
 }
 
-bap_text() {
+bap.text() {
   local text="$1"
   local length="${#text}"
   # TODO: Not a safe way to emulate variable closure...
-  bap_parser_create "
+  bap.parser.create "
     local text='$text'
     local length='$length'
   "'
     if [[ "${input:$index:$length}" = "$text" ]]; then
       let "index += length"
-      bap_result_ok $index "$text"
+      bap.result.ok $index "$text"
     else
-      bap_result_fail $index
+      bap.result.fail $index
     fi
   '
 }
 
-bap_match() {
+bap.match() {
   local regexp="$1"
   # TODO: Not a safe way to emulate variable closure...
-  bap_parser_create "
+  bap.parser.create "
     local regexp='$regexp'
   "'
     if [[ "${input:$index}" =~ ^$regexp ]]; then
       local text="${BASH_REMATCH[0]}"
       local length="${#text}"
       let "index += length"
-      bap_result_ok $index "$text"
+      bap.result.ok $index "$text"
     else
-      bap_result_fail $index
+      bap.result.fail $index
     fi
   '
 }
 
-bap_or() {
+bap.or() {
   local pa="$1"
   local pb="$2"
   # TODO: Not a safe way to emulate variable closure...
-  bap_parser_create "
+  bap.parser.create "
     local pa='$pa'
     local pb='$pb'
   "'
-    result="$(bap_parse "$pa" "$input" "$index")"
-    if [[ $(echo "$result" | bap_obj_get type) = bap.result.ok ]]; then
+    result="$(bap.parse "$pa" "$input" "$index")"
+    if [[ $(echo "$result" | bap.obj.get type) = bap.result.ok ]]; then
       echo "$result"
     else
-      bap_parse "$pb" "$input" "$index"
+      bap.parse "$pb" "$input" "$index"
     fi
   '
 }

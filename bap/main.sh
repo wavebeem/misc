@@ -3,12 +3,14 @@ set -eu
 
 source bap.sh
 
-abc="$(bap_text abc)"
-def="$(bap_text def)"
-a2z="$(bap_match '[a-z]+')"
-choose="$(bap_or "$abc" "$def")"
+abc="$(bap.text abc)"
+def="$(bap.text def)"
+a2z="$(bap.match '[a-z]+')"
+choose="$(bap.or "$abc" "$def")"
 
-echo "$(bap_parse "$choose" "abc" 0)"
-echo "$(bap_parse "$choose" "def" 0)"
-echo "$(bap_parse "$choose" "xxx" 0)"
-echo "$(bap_parse "$a2z" "abcdefxyz" 0)"
+# echo "$abc"
+
+# echo "$(bap.parse "$choose" "abc" 0)"
+# echo "$(bap.parse "$choose" "def" 0)"
+# echo "$(bap.parse "$choose" "xxx" 0)"
+echo "$(bap.parse "$a2z" "abcdefxyz" 0)"
