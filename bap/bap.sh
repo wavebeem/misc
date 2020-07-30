@@ -71,6 +71,23 @@ bap_text() {
   '
 }
 
+bap_match() {
+  local regexp="$1"
+  # TODO: Not a safe way to emulate variable closure...
+  bap_parser_create "
+    local regexp='$regexp'
+  "'
+    if [[ "${input:$index}" =~ ^$regexp ]]; then
+      local text="${BASH_REMATCH[0]}"
+      local length="${#text}"
+      let "index += length"
+      bap_result_ok $index "$text"
+    else
+      bap_result_fail $index
+    fi
+  '
+}
+
 bap_or() {
   local pa="$1"
   local pb="$2"
